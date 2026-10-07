@@ -23,10 +23,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     database_url: str = (
-        "postgresql+asyncpg://repomedic:repomedic_dev_password@localhost:5432/repomedic"
+        "postgresql+asyncpg://repomedic:repomedic_dev_password@localhost:5433/repomedic"
     )
     database_url_sync: str = (
-        "postgresql://repomedic:repomedic_dev_password@localhost:5432/repomedic"
+        "postgresql://repomedic:repomedic_dev_password@localhost:5433/repomedic"
     )
 
     redis_url: str = "redis://localhost:6379/0"

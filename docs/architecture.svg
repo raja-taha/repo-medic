@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360" role="img" aria-label="RepoMedic architecture">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eef6f4"/>
+      <stop offset="100%" stop-color="#d7efe8"/>
+    </linearGradient>
+  </defs>
+  <rect width="920" height="360" rx="24" fill="url(#bg)"/>
+  <text x="40" y="48" font-family="Georgia, serif" font-size="28" fill="#0b4f4a">RepoMedic</text>
+  <text x="40" y="78" font-family="Segoe UI, sans-serif" font-size="14" fill="#2a454c">Issue ’ sandbox ’ patch ’ evidence ’ human review</text>
+
+  <g font-family="Segoe UI, sans-serif" font-size="13" fill="#0d1f24">
+    <rect x="40" y="120" width="140" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="60" y="153">GitHub Issue</text>
+
+    <rect x="220" y="120" width="120" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="255" y="153">FastAPI</text>
+
+    <rect x="380" y="120" width="120" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="410" y="153">Redis/ARQ</text>
+
+    <rect x="540" y="120" width="140" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="565" y="153">Repair Worker</text>
+
+    <rect x="720" y="120" width="160" height="56" rx="12" fill="#0b4f4a"/>
+    <text x="745" y="153" fill="#d7efe8">Review UI</text>
+
+    <rect x="220" y="230" width="140" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="245" y="263">PostgreSQL</text>
+
+    <rect x="400" y="230" width="140" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="425" y="263">Sandbox</text>
+
+    <rect x="580" y="230" width="160" height="56" rx="12" fill="#fff" stroke="#0f766e"/>
+    <text x="600" y="263">Code Index / LLM</text>
+  </g>
+
+  <g stroke="#0f766e" stroke-width="2" fill="none">
+    <path d="M180 148 H220"/>
+    <path d="M340 148 H380"/>
+    <path d="M500 148 H540"/>
+    <path d="M680 148 H720"/>
+    <path d="M280 176 V230"/>
+    <path d="M610 176 V230"/>
+    <path d="M470 176 V230"/>
+  </g>
+</svg>

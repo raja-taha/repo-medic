@@ -1,0 +1,249 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "RepoMedic API",
+    "description": "Issue-to-Patch Software Engineering Agent — local/API collection.\n\nSet collection variable `baseUrl` (default http://localhost:8000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "taskId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task (GitHub issue)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  pm.collectionVariables.set('taskId', data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"github_owner\": \"owner\",\n  \"github_repo\": \"repo\",\n  \"issue_number\": 1,\n  \"language\": \"python\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/tasks"
+          }
+        },
+        {
+          "name": "Create Task From URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('taskId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"issue_url\": \"https://github.com/owner/repo/issues/1\",\n  \"language\": \"python\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/tasks/from-url"
+          }
+        },
+        {
+          "name": "Create Synthetic Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('taskId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"github_owner\": \"local\",\n  \"github_repo\": \"sample-python\",\n  \"issue_number\": 1,\n  \"language\": \"python\",\n  \"synthetic\": true,\n  \"issue_title\": \"divide by zero should raise ZeroDivisionError\",\n  \"issue_body\": \"Calling divide(1, 0) must raise ZeroDivisionError. Existing divide(10, 2) stays 5. Tests must pass.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/tasks"
+          }
+        },
+        {
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "tasks"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "status",
+                  "value": "awaiting_review",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/tasks/{{taskId}}"
+          }
+        },
+        {
+          "name": "Get Diff (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/tasks/{{taskId}}/diff"
+          }
+        },
+        {
+          "name": "Download Diff (raw patch)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/tasks/{{taskId}}/diff/raw"
+          }
+        },
+        {
+          "name": "Review — Approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approved\",\n  \"comments\": \"Looks good — tests and evidence check out.\",\n  \"reviewer\": \"human\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/tasks/{{taskId}}/review"
+          }
+        },
+        {
+          "name": "Review — Reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"rejected\",\n  \"comments\": \"Wrong files touched.\",\n  \"reviewer\": \"human\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/tasks/{{taskId}}/review"
+          }
+        },
+        {
+          "name": "Retry Task",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/tasks/{{taskId}}/retry"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "GitHub Issues Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-GitHub-Event",
+                "value": "issues"
+              },
+              {
+                "key": "X-Hub-Signature-256",
+                "value": "sha256=replace-when-secret-configured",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"opened\",\n  \"issue\": {\n    \"number\": 1,\n    \"title\": \"Bug: sample failure\",\n    \"body\": \"Should fail loudly on invalid input\",\n    \"html_url\": \"https://github.com/owner/repo/issues/1\",\n    \"labels\": [{ \"name\": \"bug\" }, { \"name\": \"repomedic\" }],\n    \"user\": { \"login\": \"octocat\" }\n  },\n  \"repository\": {\n    \"name\": \"repo\",\n    \"full_name\": \"owner/repo\",\n    \"owner\": { \"login\": \"owner\" }\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/webhooks/github"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "metric": "task_support_success",
+  "passed": 10,
+  "total": 10,
+  "rate": 1.0,
+  "results": [
+    {
+      "id": "py-divzero-001",
+      "passed": true,
+      "matched_signals": [
+        "zerodivisionerror",
+        "raise"
+      ],
+      "symbol_hits": 8
+    },
+    {
+      "id": "py-divzero-002",
+      "passed": true,
+      "matched_signals": [
+        "raise",
+        "zerodivisionerror"
+      ],
+      "symbol_hits": 5
+    },
+    {
+      "id": "py-checklist-003",
+      "passed": true,
+      "matched_signals": [
+        "valueerror",
+        "empty"
+      ],
+      "symbol_hits": 0
+    },
+    {
+      "id": "py-search-004",
+      "passed": true,
+      "matched_signals": [
+        "multiply"
+      ],
+      "symbol_hits": 8
+    },
+    {
+      "id": "py-search-005",
+      "passed": true,
+      "matched_signals": [
+        "subtract"
+      ],
+      "symbol_hits": 2
+    },
+    {
+      "id": "ts-placeholder-006",
+      "passed": true,
+      "skipped": true,
+      "reason": "skipped"
+    },
+    {
+      "id": "py-safety-007",
+      "passed": true,
+      "detail": [
+        "Unsafe or out-of-bounds path: .env"
+      ]
+    },
+    {
+      "id": "py-index-008",
+      "passed": true,
+      "detail": [
+        "CalculatorTests",
+        "add",
+        "divide",
+        "multiply",
+        "subtract",
+        "test_add",
+        "test_divide",
+        "test_divide_by_zero",
+        "test_multiply",
+        "test_subtract"
+      ]
+    },
+    {
+      "id": "py-repro-009",
+      "passed": true,
+      "detail": {
+        "command": "python -m pytest -q --tb=short",
+        "exit_code": 1,
+        "stdout": "..F..                                                                    [100%]\n================================== FAILURES ===================================\n_____________________ CalculatorTests.test_divide_by_zero _____________________\ntests\\test_calculator.py:20: in test_divide_by_zero\n    with self.assertRaises(ZeroDivisionError):\nE   AssertionError: ZeroDivisionError not raised\n=========================== short test summary info ===========================\nFAILED tests\\test_calculator.py::CalculatorTests::test_divide_by_zero - Asser...\n1 failed, 4 passed in 0.94s\n",
+        "stderr": "",
+        "passed": false,
+        "timed_out": false
+      }
+    },
+    {
+      "id": "py-pr-010",
+      "passed": true,
+      "matched_signals": [
+        "test"
+      ],
+      "symbol_hits": 8
+    }
+  ]
+}

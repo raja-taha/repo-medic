@@ -29,7 +29,15 @@ class LLMClient:
 
     @property
     def available(self) -> bool:
-        return bool(self.settings.openai_api_key) and not self.settings.synthetic_mode
+        if self.settings.synthetic_mode:
+            return False
+        key = (self.settings.openai_api_key or "").strip()
+        if not key:
+            return False
+        # Treat template placeholders as unset so offline demos/evals work.
+        if key.startswith("sk-your-") or "change-me" in key.lower() or "placeholder" in key.lower():
+            return False
+        return True
 
     def complete_json(self, system: str, user: str, schema: type[T]) -> T:
         if not self.available:

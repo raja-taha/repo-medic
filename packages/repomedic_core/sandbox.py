@@ -54,12 +54,7 @@ class SandboxManager:
         timeout: int,
         workdir: str | None,
     ) -> CommandResult:
-        if isinstance(command, list):
-            cmd_str = " ".join(subprocess.list2cmdline([c]) if " " in c else c for c in command)
-            # Prefer shell form for package managers
-            shell_cmd = subprocess.list2cmdline(command) if isinstance(command, list) else command
-        else:
-            shell_cmd = command
+        shell_cmd = subprocess.list2cmdline(command) if isinstance(command, list) else command
 
         docker_cmd = [
             "docker",
@@ -94,6 +89,15 @@ class SandboxManager:
                 timeout=timeout,
                 check=False,
             )
+            # Image missing / daemon issues → degrade to local execution for demos.
+            combined = f"{proc.stdout}\n{proc.stderr}".lower()
+            if proc.returncode != 0 and (
+                "unable to find image" in combined
+                or "pull access denied" in combined
+                or "cannot connect to the docker daemon" in combined
+            ):
+                logger.warning("sandbox_docker_fallback_local", reason=proc.stderr[:300])
+                return self._run_local(workspace, command, timeout, workdir)
             return CommandResult(
                 command=shell_cmd,
                 exit_code=proc.returncode,
