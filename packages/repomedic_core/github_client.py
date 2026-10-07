@@ -17,6 +17,10 @@ ISSUE_URL_RE = re.compile(
     r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)",
     re.IGNORECASE,
 )
+REPO_URL_RE = re.compile(
+    r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/?$",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -33,10 +37,21 @@ class IssueData:
 
 
 def parse_issue_url(url: str) -> tuple[str, str, int]:
-    match = ISSUE_URL_RE.search(str(url))
-    if not match:
-        raise ValueError(f"Invalid GitHub issue URL: {url}")
-    return match.group("owner"), match.group("repo"), int(match.group("number"))
+    text = str(url).strip().rstrip("/")
+    match = ISSUE_URL_RE.search(text)
+    if match:
+        return match.group("owner"), match.group("repo"), int(match.group("number"))
+
+    if REPO_URL_RE.search(text):
+        raise ValueError(
+            "That looks like a repository URL, not an issue URL. "
+            "Use https://github.com/owner/repo/issues/123 "
+            "(or switch to Manual mode and enter owner/repo + issue number)."
+        )
+    raise ValueError(
+        "Invalid GitHub issue URL. Expected format: "
+        "https://github.com/owner/repo/issues/123"
+    )
 
 
 class GitHubService:

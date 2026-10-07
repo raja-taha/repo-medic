@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReviewActions } from "@/components/ReviewActions";
 import { StatusBadge } from "@/components/StatusBadge";
-import { diffDownloadUrl, getTask } from "@/lib/api";
+import { diffDownloadUrl, getTask, type TaskDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +12,26 @@ export default async function TaskDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let task;
+  let task: TaskDetail;
   try {
     task = await getTask(id);
-  } catch {
-    notFound();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to load task";
+    // Genuine missing task vs API/network failure
+    if (message.includes("404") || /not found/i.test(message)) {
+      notFound();
+    }
+    return (
+      <main className="section">
+        <h2>Could not load task</h2>
+        <p className="lede">{id}</p>
+        <div className="panel error">{message}</div>
+        <p className="meta">
+          If you are running via Docker, ensure the API is healthy and web can reach{" "}
+          <code>http://api:8000</code> internally.
+        </p>
+      </main>
+    );
   }
 
   const latestPatch = [...task.patch_attempts].sort(

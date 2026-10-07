@@ -1,4 +1,17 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+/**
+ * Browser calls must hit the host-published API (localhost:8000).
+ * Server components inside Docker must use the compose service name (api:8000).
+ */
+function apiBase(): string {
+  if (typeof window === "undefined") {
+    return (
+      process.env.API_INTERNAL_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      "http://localhost:8000"
+    );
+  }
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+}
 
 export type TaskStatus =
   | "queued"
@@ -95,7 +108,7 @@ export interface TaskDetail extends TaskSummary {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -105,7 +118,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `Request failed: ${res.status}`);
+    try {
+      const parsed = JSON.parse(text) as { detail?: unknown };
+      if (typeof parsed.detail === "string") {
+        throw new Error(parsed.detail);
+      }
+      if (Array.isArray(parsed.detail)) {
+        throw new Error(parsed.detail.map((d) => JSON.stringify(d)).join("; "));
+      }
+    } catch (err) {
+      if (!(err instanceof SyntaxError) && err instanceof Error) {
+        throw err;
+      }
+    }
+    throw new Error(text || `Request failed: ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
 }
@@ -156,5 +182,7 @@ export function retryTask(id: string) {
 }
 
 export function diffDownloadUrl(id: string) {
-  return `${API_BASE}/api/v1/tasks/${id}/diff/raw`;
+  // Always use the public browser-facing API URL for downloads.
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  return `${base}/api/v1/tasks/${id}/diff/raw`;
 }

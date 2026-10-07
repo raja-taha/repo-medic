@@ -18,10 +18,13 @@ export function NewTaskForm() {
     try {
       let task;
       if (mode === "url") {
-        task = await createTaskFromUrl(
-          String(data.get("issue_url") || ""),
-          String(data.get("language") || "python"),
-        );
+        const issueUrl = String(data.get("issue_url") || "").trim();
+        if (!/github\.com\/[^/]+\/[^/]+\/issues\/\d+/i.test(issueUrl)) {
+          throw new Error(
+            "Paste a full issue URL like https://github.com/owner/repo/issues/42 — a repo URL alone is not enough.",
+          );
+        }
+        task = await createTaskFromUrl(issueUrl, String(data.get("language") || "python"));
       } else {
         task = await createTask({
           github_owner: String(data.get("github_owner") || ""),
@@ -67,7 +70,10 @@ export function NewTaskForm() {
             name="issue_url"
             required
             placeholder="https://github.com/owner/repo/issues/42"
+            pattern=".*github\.com/.+/.+/issues/[0-9]+.*"
+            title="Must include /issues/<number>"
           />
+          <span className="meta">Must be an issue link (…/issues/123), not just the repo.</span>
         </label>
       ) : (
         <>

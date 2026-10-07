@@ -120,6 +120,7 @@ Services:
 | Web | 3000 |
 | API | 8000 |
 | Postgres | 5433 (host) → 5432 (container) |
+| Cloned repos | `./workspaces/<task_id>/repo` (host) → `/app/workspaces/...` in worker |
 | Redis | 6379 |
 
 ### 3. Seed a synthetic repair

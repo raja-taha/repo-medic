@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import TypeVar
 
 from openai import OpenAI
@@ -34,39 +35,75 @@ class LLMClient:
         key = (self.settings.openai_api_key or "").strip()
         if not key:
             return False
-        # Treat template placeholders as unset so offline demos/evals work.
         if key.startswith("sk-your-") or "change-me" in key.lower() or "placeholder" in key.lower():
             return False
         return True
 
-    def complete_json(self, system: str, user: str, schema: type[T]) -> T:
+    def complete_json(
+        self,
+        system: str,
+        user: str,
+        schema: type[T],
+        *,
+        max_tokens: int | None = None,
+        retries: int = 2,
+    ) -> T:
         if not self.available:
             raise RuntimeError("LLM unavailable: set OPENAI_API_KEY or disable SYNTHETIC_MODE")
 
-        response = self.client.chat.completions.create(
-            model=self.settings.openai_model,
-            temperature=self.settings.llm_temperature,
-            max_tokens=self.settings.llm_max_tokens,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"{system}\n\n"
-                        "Respond with a single JSON object that matches this schema:\n"
-                        f"{json.dumps(schema.model_json_schema(), indent=2)}"
-                    ),
-                },
-                {"role": "user", "content": user},
-            ],
-        )
-        content = response.choices[0].message.content or "{}"
-        try:
-            return schema.model_validate_json(content)
-        except ValidationError:
-            # Retry once by wrapping parse
-            data = json.loads(content)
-            return schema.model_validate(data)
+        token_budget = max_tokens or self.settings.llm_max_tokens
+        last_error: Exception | None = None
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    f"{system}\n\n"
+                    "Respond with a single compact JSON object matching this schema. "
+                    "Keep string values short. Prefer search/replace snippets over full files.\n"
+                    f"{json.dumps(schema.model_json_schema(), indent=2)}"
+                ),
+            },
+            {"role": "user", "content": user},
+        ]
+
+        for attempt in range(retries + 1):
+            response = self.client.chat.completions.create(
+                model=self.settings.openai_model,
+                temperature=self.settings.llm_temperature,
+                max_tokens=token_budget,
+                response_format={"type": "json_object"},
+                messages=messages,
+            )
+            content = response.choices[0].message.content or "{}"
+            finish = response.choices[0].finish_reason
+            try:
+                return schema.model_validate(_parse_json_object(content))
+            except (ValidationError, json.JSONDecodeError, ValueError) as exc:
+                last_error = exc
+                logger.warning(
+                    "llm_json_parse_failed",
+                    attempt=attempt,
+                    finish_reason=finish,
+                    error=str(exc),
+                    content_len=len(content),
+                )
+                messages.append({"role": "assistant", "content": content})
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous reply was invalid or truncated JSON. "
+                            "Return ONLY a complete, valid JSON object. "
+                            "Use small old_str/new_str edits — never paste entire large files. "
+                            f"Parse error: {exc}"
+                        ),
+                    }
+                )
+                # Give a bit more room on retry if we hit length
+                if finish == "length":
+                    token_budget = min(token_budget * 2, 16_384)
+
+        raise RuntimeError(f"LLM returned invalid JSON after retries: {last_error}")
 
     def complete_text(self, system: str, user: str) -> str:
         if not self.available:
@@ -81,6 +118,24 @@ class LLMClient:
             ],
         )
         return response.choices[0].message.content or ""
+
+
+def _parse_json_object(content: str) -> dict:
+    text = content.strip()
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
+
+    # Extract outermost object if model wrapped extra text
+    match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+    if match:
+        data = json.loads(match.group(0))
+        if isinstance(data, dict):
+            return data
+    raise json.JSONDecodeError("Could not parse JSON object", text, 0)
 
 
 def heuristic_checklist(title: str, body: str, language: str = "python") -> dict:

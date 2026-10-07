@@ -188,14 +188,20 @@ class PatchPlanSchema(BaseModel):
 
 
 class FileEdit(BaseModel):
+    """Surgical edit. Prefer search/replace over rewriting whole files."""
+
     path: str
     action: str = Field(pattern="^(modify|create|delete)$")
+    # For modify: exact substring to find (must be unique in the file)
+    old_str: str | None = None
+    # For modify: replacement text; for create: full new-file contents
+    new_str: str | None = None
+    # Legacy/full-rewrite fallback (avoid — easily truncates JSON)
     content: str | None = None
-    old_content_hint: str | None = None
 
 
 class PatchProposal(BaseModel):
-    files: list[FileEdit]
+    files: list[FileEdit] = Field(default_factory=list, max_length=8)
     explanation: str
 
 

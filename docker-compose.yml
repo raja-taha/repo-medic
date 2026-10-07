@@ -37,7 +37,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-repomedic}:${POSTGRES_PASSWORD:-repomedic_dev_password}@postgres:5432/${POSTGRES_DB:-repomedic}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-repomedic}:${POSTGRES_PASSWORD:-repomedic_dev_password}@postgres:5432/${POSTGRES_DB:-repomedic}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-repomedic}:${POSTGRES_PASSWORD:-repomedic_dev_password}@postgres:5432/${POSTGRES_DB:-repomedic}
       REDIS_URL: redis://redis:6379/0
       API_HOST: 0.0.0.0
       API_PORT: 8000
@@ -64,7 +64,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-repomedic}:${POSTGRES_PASSWORD:-repomedic_dev_password}@postgres:5432/${POSTGRES_DB:-repomedic}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-repomedic}:${POSTGRES_PASSWORD:-repomedic_dev_password}@postgres:5432/${POSTGRES_DB:-repomedic}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${POSTGRES_USER:-repomedic}:${POSTGRES_PASSWORD:-repomedic_dev_password}@postgres:5432/${POSTGRES_DB:-repomedic}
       REDIS_URL: redis://redis:6379/0
       WORKSPACE_ROOT: /app/workspaces
     volumes:
@@ -86,7 +86,10 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     container_name: repomedic-web
     environment:
+      # Browser → host-mapped API
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      # Next.js server components inside this container → compose DNS
+      API_INTERNAL_BASE_URL: ${API_INTERNAL_BASE_URL:-http://api:8000}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:

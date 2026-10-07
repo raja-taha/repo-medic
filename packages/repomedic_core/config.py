@@ -26,7 +26,7 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://repomedic:repomedic_dev_password@localhost:5433/repomedic"
     )
     database_url_sync: str = (
-        "postgresql://repomedic:repomedic_dev_password@localhost:5433/repomedic"
+        "postgresql+psycopg2://repomedic:repomedic_dev_password@localhost:5433/repomedic"
     )
 
     redis_url: str = "redis://localhost:6379/0"

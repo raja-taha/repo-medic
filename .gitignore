@@ -32,8 +32,11 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
-# Workspaces & runtime
-workspaces/
+# Workspaces & runtime (keep fixtures)
+workspaces/*
+!workspaces/fixtures/
+!workspaces/fixtures/**
+!workspaces/.gitkeep
 data/
 *.log
 .DS_Store

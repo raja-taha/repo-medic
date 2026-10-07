@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { listTasks } from "@/lib/api";
+import { listTasks, type TaskSummary } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
-  let tasks = [];
+  let tasks: TaskSummary[] = [];
   let error: string | null = null;
   try {
     tasks = await listTasks();

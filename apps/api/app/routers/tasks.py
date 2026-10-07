@@ -120,7 +120,10 @@ async def create_task_from_url(
     payload: CreateTaskFromUrlRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TaskDetail:
-    owner, repo, number = parse_issue_url(str(payload.issue_url))
+    try:
+        owner, repo, number = parse_issue_url(str(payload.issue_url))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return await create_task(
         CreateTaskRequest(
             github_owner=owner,

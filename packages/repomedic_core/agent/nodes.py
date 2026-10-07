@@ -200,56 +200,89 @@ def generate_and_apply_patch(state: dict[str, Any]) -> dict[str, Any]:
     workspace = Path(state["workspace"])
     attempt = int(state.get("attempt") or 1)
 
+    # Keep context small so the model does not try to rewrite huge files.
     file_contexts = []
-    for rel in (state.get("patch_plan") or {}).get("target_files", [])[:8]:
+    for rel in (state.get("patch_plan") or {}).get("target_files", [])[:5]:
         try:
-            content = read_file_snippet(workspace, rel, start=1, end=200)
+            content = read_file_snippet(workspace, rel, start=1, end=120)
             file_contexts.append({"path": rel, "content": content})
         except FileNotFoundError:
             continue
 
-    if llm.available:
-        proposal = llm.complete_json(
-            system=(
-                "You generate a minimal surgical patch for a repository bug. "
-                f"Change at most {settings.max_files_changed} files. "
-                "Only modify/create/delete paths that exist in context or are explicitly required. "
-                "Return full file contents for modified/created files."
-            ),
-            user=(
-                f"Issue: {state.get('issue_title')}\n\n"
-                f"Body: {state.get('issue_body')}\n\n"
-                f"Plan: {state.get('patch_plan')}\n\n"
-                f"Previous attempt failures: {state.get('patch_result')}\n\n"
-                f"Files:\n{file_contexts}"
-            ),
-            schema=PatchProposal,
-        )
-    else:
-        # Offline: no-op patch so pipeline can complete with evidence
-        proposal = PatchProposal(files=[], explanation="No LLM key — skipping file edits in synthetic mode.")
+    body = (state.get("issue_body") or "")[:2500]
+    try:
+        if llm.available:
+            proposal = llm.complete_json(
+                system=(
+                    "You are RepoMedic. Emit a MINIMAL surgical patch as JSON. "
+                    f"Change at most {min(settings.max_files_changed, 5)} files. "
+                    "For modify: set action=modify with unique old_str and new_str "
+                    "(short contiguous snippets only — typically < 40 lines each). "
+                    "For create: action=create with new_str as the full small new file. "
+                    "Never return entire large source files in content. "
+                    "Do not invent paths outside the provided file list unless creating a tiny test file."
+                ),
+                user=(
+                    f"Issue: {state.get('issue_title')}\n\n"
+                    f"Body:\n{body}\n\n"
+                    f"Plan: {state.get('patch_plan')}\n\n"
+                    f"Previous attempt failures: {state.get('patch_result')}\n\n"
+                    f"Relevant file snippets:\n{json_ready(file_contexts)}"
+                ),
+                schema=PatchProposal,
+                max_tokens=max(settings.llm_max_tokens, 8192),
+                retries=2,
+            )
+        else:
+            proposal = PatchProposal(
+                files=[],
+                explanation="No LLM key — skipping file edits in synthetic mode.",
+            )
 
-    applied = apply_proposal(workspace, proposal)
-    state["patch_proposal"] = proposal.model_dump()
-    state["patch_result"] = {
-        "ok": applied.ok,
-        "errors": applied.errors,
-        "files_changed": applied.files_changed,
-        "unified_diff": applied.unified_diff,
-        "attempt": attempt,
-        "explanation": proposal.explanation,
-    }
+        applied = apply_proposal(workspace, proposal)
+        state["patch_proposal"] = proposal.model_dump()
+        state["patch_result"] = {
+            "ok": applied.ok,
+            "errors": applied.errors,
+            "files_changed": applied.files_changed,
+            "unified_diff": applied.unified_diff,
+            "attempt": attempt,
+            "explanation": proposal.explanation,
+        }
+        state["status"] = "verifying" if applied.ok or not proposal.files else "patching"
+        files_touched = [f.path for f in proposal.files]
+    except Exception as exc:  # noqa: BLE001
+        logger.error("patch_generation_failed", error=str(exc))
+        state["patch_result"] = {
+            "ok": False,
+            "errors": [str(exc)],
+            "files_changed": [],
+            "unified_diff": "",
+            "attempt": attempt,
+            "explanation": "",
+        }
+        # Continue to verify/review with failure evidence instead of crashing the job
+        state["status"] = "verifying"
+        state["error"] = str(exc)
+        files_touched = []
+        proposal = PatchProposal(files=[], explanation=str(exc))
+
     state["attempt"] = attempt
-    state["status"] = "verifying" if applied.ok or not proposal.files else "patching"
     _trace(
         state,
         "generate_and_apply_patch",
         "patcher",
-        {"attempt": attempt, "files": [f.path for f in proposal.files]},
-        {"ok": applied.ok, "errors": applied.errors},
+        {"attempt": attempt, "files": files_touched},
+        {"ok": (state.get("patch_result") or {}).get("ok"), "errors": (state.get("patch_result") or {}).get("errors")},
         started,
     )
     return state
+
+
+def json_ready(value: Any) -> str:
+    import json
+
+    return json.dumps(value, ensure_ascii=False, indent=2)[:12_000]
 
 
 def verify(state: dict[str, Any]) -> dict[str, Any]:

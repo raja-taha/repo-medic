@@ -59,12 +59,30 @@ def validate_proposal(root: Path, proposal: PatchProposal) -> PatchValidation:
             errors.append(f"Unsafe or out-of-bounds path: {edit.path}")
             continue
         files.append(edit.path)
-        if edit.action in {"modify", "create"} and edit.content is None:
-            errors.append(f"Missing content for {edit.action}: {edit.path}")
-        if edit.action == "modify":
+
+        if edit.action == "create":
+            if not (edit.new_str or edit.content):
+                errors.append(f"Missing new_str/content for create: {edit.path}")
+        elif edit.action == "modify":
             target = root / edit.path
             if not target.exists():
                 errors.append(f"Cannot modify missing file: {edit.path}")
+                continue
+            if edit.old_str is not None and edit.new_str is not None:
+                source = target.read_text(encoding="utf-8", errors="ignore")
+                count = source.count(edit.old_str)
+                if count == 0:
+                    errors.append(f"old_str not found in {edit.path}")
+                elif count > 1:
+                    errors.append(f"old_str matched {count} times in {edit.path}; must be unique")
+            elif edit.content is not None:
+                pass
+            else:
+                errors.append(
+                    f"Modify {edit.path} requires old_str+new_str (preferred) or content"
+                )
+        elif edit.action == "delete":
+            continue
 
     return PatchValidation(ok=not errors, errors=errors, files_changed=files, unified_diff="")
 
@@ -87,7 +105,6 @@ def apply_proposal(root: Path, proposal: PatchProposal) -> PatchValidation:
         for edit in proposal.files:
             _apply_edit(root, edit)
     except Exception as exc:  # noqa: BLE001
-        # Best-effort rollback
         for rel, content in before_snapshots.items():
             path = root / rel
             if content is None:
@@ -105,7 +122,6 @@ def apply_proposal(root: Path, proposal: PatchProposal) -> PatchValidation:
     diff = build_unified_diff(root, before_snapshots)
     settings = get_settings()
     if len(diff.encode("utf-8")) > settings.max_diff_bytes:
-        # Rollback oversized patch
         for rel, content in before_snapshots.items():
             path = root / rel
             if content is None:
@@ -134,8 +150,24 @@ def _apply_edit(root: Path, edit: FileEdit) -> None:
         if path.exists():
             path.unlink()
         return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(edit.content or "", encoding="utf-8")
+
+    if edit.action == "create":
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(edit.new_str if edit.new_str is not None else (edit.content or ""), encoding="utf-8")
+        return
+
+    # modify
+    if not path.exists():
+        raise FileNotFoundError(edit.path)
+    current = path.read_text(encoding="utf-8", errors="ignore")
+    if edit.old_str is not None and edit.new_str is not None:
+        updated = current.replace(edit.old_str, edit.new_str, 1)
+        path.write_text(updated, encoding="utf-8")
+        return
+    if edit.content is not None:
+        path.write_text(edit.content, encoding="utf-8")
+        return
+    raise ValueError(f"Incomplete modify edit for {edit.path}")
 
 
 def build_unified_diff(root: Path, before_snapshots: dict[str, str | None]) -> str:
