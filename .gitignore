@@ -44,7 +44,6 @@ Thumbs.db
 
 # IDE
 .idea/
-.vscode/
 *.swp
 
 # Docker volumes
@@ -56,3 +55,7 @@ redis_data/
 *.key
 credentials.json
 secrets/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
